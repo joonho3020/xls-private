@@ -10,10 +10,10 @@ struct VarInt {
   data: u8
 }
 
-fn decode_to_varint(byte: u8) -> VarInt {
+pub fn decode_to_varint(byte: u8) -> VarInt {
   let mask = (u8:0xff);
   VarInt {
-    more_bytes: (byte >> u8:7),
+    more_bytes: (byte >> u8:7) as u1,
     data: (byte & mask)
   }
 }

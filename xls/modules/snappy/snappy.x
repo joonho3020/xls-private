@@ -2,15 +2,13 @@
 import std;
 import xls.modules.snappy.buffer as buff;
 import xls.modules.snappy.common;
-import xls.modules.snappy.varint;
+import xls.modules.snappy.varint as varint;
 
 const BUS_BITS = common::BUS_BITS;
 const BYTE     = common::BYTE;
 
-
 type Buffer = buff::Buffer;
 type BusBytes = common::BusBytes;
-type VarInt = varint::VarInt;
 
 pub enum SnappyFSMStates : u2 {
   VARINT_DECODE = 0,
@@ -27,11 +25,11 @@ struct SnappyState {
 fn snappy_varint_decode(state: SnappyState) -> (bool, BusBytes, SnappyState) {
   let (br, data) = buff::buffer_pop(state.buffer, BYTE);
 
-  if br.status == buff::BufferState::FAILED {
+  if br.status == buff::BufferStatus::FAILED {
     (false, zero!<BusBytes>(), state)
   } else {
     let vi = varint::decode_to_varint(data as u8);
-    let varint_to_add = vi.data << (state.varint_idx * u32:7 as u8);
+    let varint_to_add = vi.data << ((state.varint_idx * u32:7) as u8);
     let nxt_fsm_state = if vi.more_bytes == u1:0 {
       SnappyFSMStates::DECOMPRESS
     } else {
@@ -48,6 +46,17 @@ fn snappy_varint_decode(state: SnappyState) -> (bool, BusBytes, SnappyState) {
 }
 
 fn snappy_decompress(state: SnappyState) -> (bool, BusBytes, SnappyState) {
+  let (buffer_result, bits_from_buffer) = buff::buffer_pop(state.buffer, BUS_BITS);
+  (
+    false,
+    bits_from_buffer,
+    SnappyState {
+      buffer: buffer_result.buffer,
+      varint_idx: state.varint_idx,
+      decomp_len: state.decomp_len,
+      fsm: state.fsm
+    }
+  )
 }
 
 pub proc Snappy {
@@ -69,8 +78,11 @@ pub proc Snappy {
     let can_fit = buff::buffer_can_fit(state.buffer, BusBytes:0);
     let (tok, data, recv_valid) = recv_if_non_blocking(tok, comp_data_r, can_fit, BusBytes:0);
     let state = if (can_fit && recv_valid) {
-      let buffer = buff::buffer_append(state.buffer, data);
-      SnappyState {buffer, ..state}
+      let buffer_result = buff::buffer_append(state.buffer, data);
+      SnappyState {
+        buffer: buffer_result.buffer,
+        ..state
+      }
     } else {
       state
     };
@@ -83,5 +95,6 @@ pub proc Snappy {
       _ => (false, zero!<BusBytes>(), state)
     };
 
+    state
   }
 }

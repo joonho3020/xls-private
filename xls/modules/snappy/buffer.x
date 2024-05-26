@@ -1,6 +1,6 @@
 
 pub struct Buffer<CAPACITY: u32> {
-  data: bits[CAPACITY],
+  content: bits[CAPACITY],
   length: u32
 }
 
@@ -26,7 +26,7 @@ pub fn buffer_append_unsafe<DSIZE: u32, CAPACITY: u32>(
   buffer: Buffer<CAPACITY>, data: bits[DSIZE]
 ) -> Buffer<CAPACITY> {
   Buffer {
-    content: (data as bits[CAPACITY] << buffer.length) | buffer.data,
+    content: (data as bits[CAPACITY] << buffer.length) | buffer.content,
     length: buffer.length + DSIZE
   }
 }
@@ -40,7 +40,11 @@ pub fn buffer_append<DSIZE: u32, CAPACITY: u32>(
       status: BufferStatus::FAILED
     }
   } else {
-    (buffer_append_unsafe(buffer, data), true)
+    let buffer = buffer_append_unsafe(buffer, data);
+    BufferResult {
+      buffer: buffer,
+      status: BufferStatus::OK
+    }
   }
 }
 
@@ -50,10 +54,10 @@ pub fn buffer_pop_unsafe<CAPACITY: u32>(
   let mask = (bits[CAPACITY]:1 << length) - bits[CAPACITY]:1;
   (
     Buffer {
-      content: buffer.data >> length,
+      content: buffer.content >> length,
       length: buffer.length - length
     },
-    buffer.data & mask
+    buffer.content & mask
   )
 }
 
