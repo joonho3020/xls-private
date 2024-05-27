@@ -83,3 +83,26 @@ pub fn buffer_pop<CAPACITY: u32>(
     )
   }
 }
+
+#[test]
+fn test_buffer_has_at_least() {
+    let buffer = Buffer { content: u32:0, length: u32:0 };
+    assert_eq(buffer_has_at_least(buffer, u32:0), true);
+    assert_eq(buffer_has_at_least(buffer, u32:16), false);
+    assert_eq(buffer_has_at_least(buffer, u32:32), false);
+    assert_eq(buffer_has_at_least(buffer, u32:33), false);
+
+    trace_fmt!("Hello");
+
+    let buffer = Buffer { content: u32:0, length: u32:16 };
+    assert_eq(buffer_has_at_least(buffer, u32:0), true);
+    assert_eq(buffer_has_at_least(buffer, u32:16), true);
+    assert_eq(buffer_has_at_least(buffer, u32:32), false);
+    assert_eq(buffer_has_at_least(buffer, u32:33), false);
+
+    let buffer = Buffer { content: u32:0, length: u32:32 };
+    assert_eq(buffer_has_at_least(buffer, u32:0), true);
+    assert_eq(buffer_has_at_least(buffer, u32:16), true);
+    assert_eq(buffer_has_at_least(buffer, u32:32), true);
+    assert_eq(buffer_has_at_least(buffer, u32:33), false);
+}

@@ -13,17 +13,49 @@ package(
 )
 
 xls_dslx_library(
-    name = "snappy_libs_dslx",
+    name = "buffer_dslx",
+    srcs = [
+        "buffer.x",
+    ]
+)
+
+xls_dslx_test(
+    name = "buffer_test",
+    dslx_test_args = {
+        "compare": "none"
+    },
+    library = ":buffer_dslx"
+)
+
+xls_dslx_library(
+    name = "snappy_common_dslx",
     srcs = [
         "buffer.x",
         "common.x",
         "varint.x",
-        "snappy.x"
     ]
 )
 
-xls_dslx_opt_ir(
-    name = "snappy_opt_ir",
-    dslx_top = "Snappy",
-    library = "snappy_libs_dslx"
+xls_dslx_library(
+    name = "snappy_decomp_dslx",
+    srcs = [
+        "snappy.x",
+        "command_expander.x"
+    ],
+    deps = [
+        ":snappy_common_dslx"
+    ]
 )
+
+xls_dslx_test(
+    name = "snappy_decomp_test",
+    dslx_test_args = {
+    },
+    library = ":snappy_decomp_dslx"
+)
+
+# xls_dslx_opt_ir(
+# name = "snappy_opt_ir",
+# dslx_top = "SnappyDecompressor",
+# library = "snappy_libs_dslx"
+# )

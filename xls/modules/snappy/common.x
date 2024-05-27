@@ -1,7 +1,38 @@
 
 
-pub const BUS_BYTES = u32:32;
+pub const BUS_BYTES = u32:8;
 pub const BUS_BITS  = BUS_BYTES * u32:8;
 pub const BYTE = u32:8;
 
-pub type BusBytes = bits[BUS_BITS];
+pub type BusBytesBundle = bits[BUS_BITS];
+
+pub struct SnappyDecompInfo {
+  compressed_file_bytes: u32
+}
+
+pub struct DataBundle<CAPACITY: u32> {
+  data: bits[CAPACITY],
+  valid_bytes: u32,
+  is_last: bool
+}
+
+pub struct CopyInfo {
+  offset: u32,
+  copy_len: u32,
+}
+
+pub struct LitInfo {
+  litlen: u32
+}
+
+pub struct SnpyCmd {
+  is_copy: bool,
+  copy_info: CopyInfo,
+  lit_info: LitInfo
+}
+
+pub struct SnpyCmdOrData<CAPACITY: u32> {
+  is_cmd: bool,
+  cmd: SnpyCmd,
+  data: DataBundle<CAPACITY>
+}
