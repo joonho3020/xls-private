@@ -7,9 +7,9 @@ import xls.modules.snappy.varint as varint;
 const BYTE     = common::BYTE;
 const BUS_BITS = common::BUS_BITS;
 const BUS_BYTES = BUS_BITS >> 3;
-const BUFFER_BITS = BUS_BITS * u32:4;
+const BUFFER_BITS = BUS_BITS * u32:50;
 
-type Buffer = buff::Buffer;
+type RotBuffer = buff::RotBuffer<BUFFER_BITS>;
 type BusBytesBundle = common::BusBytesBundle;
 type DataBundle = common::DataBundle<BUS_BITS>;
 type SnpyCmdOrData = common::SnpyCmdOrData<BUS_BITS>;
@@ -24,7 +24,7 @@ pub enum CopyExpanderFSM : u3 {
 
 struct SnappyCommandExpanderState {
   fsm: CopyExpanderFSM,
-  buffer: Buffer<BUFFER_BITS>
+  rotbuffer: RotBuffer
 }
 
 
@@ -82,16 +82,18 @@ proc SnappyCommandExpander {
   }
 
   next(tok: token, state: SnappyCommandExpanderState) {
-    let recv_ready = buff::buffer_can_fit(state.buffer, BusBytesBundle:0);
+    let recv_ready = buff::rotbuf_can_fit(state.rotbuffer, BUS_BYTES);
     let (tok, databundle, recv_valid) = recv_if_non_blocking(tok, incoming_data_bundle, recv_ready, zero!<DataBundle>());
     let state = if (recv_valid && recv_ready) {
       trace_fmt!("[SnpyCommandExpander] recv data {:x} bytes {} last {}", databundle.data, databundle.valid_bytes, databundle.is_last);
       // let valid_bits = databundle.valid_bytes << 3;
       // let buff_data = databundle.data as bits[valid_bits];
-      let buffer_result = buff::buffer_append(state.buffer, databundle.data);
-      trace_fmt!("[SnpyCommandExpander] buffer {:x} {}", buffer_result.buffer.content, buffer_result.buffer.length);
+      let buffer_result = buff::rotbuf_append(state.rotbuffer, databundle);
+      trace_fmt!("[SnpyCommandExpander] rotbuffer {:x} {}",
+        buffer_result.rotbuffer.content,
+        buff::rotbuf_valid_bytes(buffer_result.rotbuffer));
       SnappyCommandExpanderState {
-        buffer: buffer_result.buffer,
+        rotbuffer: buffer_result.rotbuffer,
         ..state
       }
     } else {

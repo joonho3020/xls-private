@@ -60,11 +60,15 @@ fn snappy_varint_decode(state: SnappyState) -> (bool, DataBundle, SnappyState) {
 }
 
 fn snappy_feed_backend(state: SnappyState) -> (bool, DataBundle, SnappyState) {
-  let remaining_bytes_to_send = state.in_comp_file_bytes - state.bytes_sent;
+  let remaining_bytes_to_send = state.in_comp_file_bytes - state.bytes_sent - state.varint_idx;
   let bytes_to_send_now = std::umin(remaining_bytes_to_send, BUS_BYTES);
   let bits_to_send_now = bytes_to_send_now << 3;
   let (buffer_result, bits_from_buffer) = buff::buffer_pop(state.buffer, bits_to_send_now);
   let is_last_chunk = remaining_bytes_to_send <= BUS_BYTES;
+
+  trace_fmt!("[SnpyDecomp] bufbytes {} remaining_to_send {} bytes_to_send {} buff results {} is_last_chunk {}",
+    state.buffer.length >> 3,
+    remaining_bytes_to_send, bytes_to_send_now, buffer_result.status, is_last_chunk);
   if (buffer_result.status == buff::BufferStatus::OK) {
     (
       true,
@@ -212,7 +216,7 @@ proc SnappyDecompressorTest {
       let tok = send(tok, comp_data_s, BusBytesBundle:0x73_20_64_6c_75_6f_68_73);
       let tok = send(tok, comp_data_s, BusBytesBundle:0x74_20_65_63_69_66_66_75);
       let tok = send(tok, comp_data_s, BusBytesBundle:0x69_61_6c_70_78_65_20_6f);
-      let tok = send(tok, comp_data_s, BusBytesBundle:0x0a_74_73_6f_6d_20_6e_69);
+      let tok = send(tok, comp_data_s, BusBytesBundle:0x74_73_6f_6d_20_6e_69);
       (
         tok,
         TestBenchState { sent_snappy_header: true }
