@@ -131,11 +131,12 @@ pub fn rotbuf_valid_bytes<CAPACITY: u32>(
   rotbuffer.received_so_far_bytes - rotbuffer.sent_so_far_bytes
 }
 
-pub fn rotbuf_is_last_chunk<CAPACITY: u32, BUS_BITS: u32>(
-  rotbuffer: RotBuffer<CAPACITY>
+pub fn rotbuf_is_last_chunk<CAPACITY: u32>(
+  rotbuffer: RotBuffer<CAPACITY>,
+  bus_bits: u32
 ) -> bool {
   let valid_bytes = rotbuf_valid_bytes(rotbuffer);
-  let bus_bytes = BUS_BITS >> 3;
+  let bus_bytes = bus_bits >> 3;
   rotbuffer.received_last_chunk && (valid_bytes <= bus_bytes)
 }
 
@@ -181,18 +182,38 @@ pub fn rotbuf_has_at_least<CAPACITY: u32>(
   valid_bytes >= output_size_bytes
 }
 
+pub fn rotbuf_peek_unsafe<CAPACITY: u32>(
+  rotbuffer: RotBuffer<CAPACITY>, bytes_to_peek: u32
+) -> bits[CAPACITY] {
+  let bits_to_peek  = bytes_to_peek << 3;
+  let mask = (bits[CAPACITY]:1 << bits_to_peek as bits[CAPACITY]) - bits[CAPACITY]:1;
+  rotbuffer.content & mask
+}
+
+pub fn rotbuf_peek<CAPACITY: u32>(
+  rotbuffer: RotBuffer<CAPACITY>, bytes_to_peek: u32
+) -> (bool, bits[CAPACITY]) {
+  if rotbuf_has_at_least(rotbuffer, bytes_to_peek) == false{
+    (false, zero!<bits[CAPACITY]>())
+  } else {
+    let bits_to_peek  = bytes_to_peek << 3;
+    let mask = (bits[CAPACITY]:1 << bits_to_peek as bits[CAPACITY]) - bits[CAPACITY]:1;
+    (true, rotbuffer.content & mask)
+  }
+}
+
 pub fn rotbuf_pop_unsafe<BUS_BITS: u32, CAPACITY: u32>(
   rotbuffer: RotBuffer<CAPACITY>, bytes_to_pop: u32
-) -> (RotBuffer<CAPACITY>, bits[BUS_BITS]) {
+) -> (RotBuffer<CAPACITY>, bits[CAPACITY]) {
   let bits_to_pop = bytes_to_pop << 3;
   let mask = (bits[CAPACITY]:1 << bits_to_pop as bits[CAPACITY]) - bits[CAPACITY]:1;
   (
     RotBuffer {
       content: rotbuffer.content >> bits_to_pop,
-      sent_so_far_bytes: rotbuffer.sent_so_far + bytes_to_pop,
+      sent_so_far_bytes: rotbuffer.sent_so_far_bytes + bytes_to_pop,
       ..rotbuffer
     },
-    rotbuffer.content & mask
+    rotbuf_peek_unsafe(rotbuffer, bytes_to_pop)
   )
 }
 

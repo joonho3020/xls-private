@@ -6,6 +6,13 @@ pub const BYTE = u32:8;
 
 pub type BusBytesBundle = bits[BUS_BITS];
 
+pub enum SnappyOpcode : u2 {
+  LITERAL = 0,
+  COPY_1BYTE_OFFSET = 1,
+  COPY_2BYTE_OFFSET = 2,
+  COPY_4BYTE_OFFSET = 3,
+}
+
 pub struct SnappyDecompInfo {
   compressed_file_bytes: u32
 }

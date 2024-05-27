@@ -1,0 +1,229 @@
+
+import std;
+import xls.modules.snappy.buffer as buff;
+import xls.modules.snappy.common;
+import xls.modules.snappy.varint as varint;
+
+const BYTE     = common::BYTE;
+const BUS_BITS = common::BUS_BITS;
+const BUS_BYTES = BUS_BITS >> 3;
+const BUFFER_BITS = BUS_BITS * u32:50;
+
+type SnappyOpcode = common::SnappyOpcode;
+type RotBuffer = buff::RotBuffer<BUFFER_BITS>;
+type BusBytesBundle = common::BusBytesBundle;
+type DataBundle = common::DataBundle<BUS_BITS>;
+
+type CopyInfo = common::CopyInfo;
+type LitInfo = common::LitInfo;
+type SnpyCmd = common::SnpyCmd;
+type SnpyCmdOrData = common::SnpyCmdOrData<BUS_BITS>;
+
+
+pub enum CopyExpanderFSM : u3 {
+  DECODE_TAG = 0,
+  SHIP_LITERALS = 1
+}
+
+struct SnappyCommandExpanderState {
+  fsm: CopyExpanderFSM,
+  rotbuffer: RotBuffer
+}
+
+pub fn decode_tag(state: SnappyCommandExpanderState) ->
+    (bool, SnpyCmdOrData, SnappyCommandExpanderState) {
+  let rotbuf_valid_bytes = buff::rotbuf_valid_bytes(state.rotbuffer);
+  if rotbuf_valid_bytes < u32:1 {
+    (false, zero!<SnpyCmdOrData>(), state)
+  } else {
+    let (_, tag) = buff::rotbuf_peek(state.rotbuffer, u32:1);
+    let opcode = tag[0:2];
+    let upper_tag = tag[2:8] as u32;
+
+    // literal
+    if (opcode == SnappyOpcode::LITERAL) {
+      if (upper_tag < u32:60) { // Short literal: starting shipping literals
+        let (rbr, _) = buff::rotbuf_pop(state.rotbuffer, u32:1);
+
+        let newstate = SnappyCommandExpanderState {
+          fsm: CopyExpanderFSM::SHIP_LITERALS,
+          rotbuffer: rbr.rotbuffer
+        };
+        let cmdordata = SnpyCmdOrData {
+          is_cmd: true,
+          cmd : SnpyCmd {
+            is_copy: false,
+            copy_info: zero!<CopyInfo>(),
+            lit_info: LitInfo { litlen: upper_tag + u32:1 }
+          },
+          data: zero!<DataBundle>()
+        };
+        (true, cmdordata, newstate)
+      } else { // Long literal
+        let extra_bytes = upper_tag - u32:60 + u32:1;
+
+        if (rotbuf_valid_bytes >= u32:1 + extra_bytes) {
+          // enough bytes to compute the litlen, start shipping literals
+          let (rbr, _)      = buff::rotbuf_pop(state.rotbuffer, u32:1);
+          let (rbr, litlen) = buff::rotbuf_pop(state.rotbuffer, extra_bytes);
+          let litlen = (litlen as u32) + u32:1;
+
+          let newstate = SnappyCommandExpanderState {
+            fsm: CopyExpanderFSM::SHIP_LITERALS,
+            rotbuffer: rbr.rotbuffer
+          };
+          let cmdordata = SnpyCmdOrData {
+            is_cmd: true,
+            cmd : SnpyCmd {
+              is_copy: false,
+              copy_info: zero!<CopyInfo>(),
+              lit_info: LitInfo { litlen: litlen }
+            },
+            data: zero!<DataBundle>()
+          };
+          (true, cmdordata, newstate)
+        } else { // not enough bytes yet
+          (false, zero!<SnpyCmdOrData>(), state)
+        }
+      }
+    } else if (opcode == SnappyOpcode::COPY_1BYTE_OFFSET) {
+      if (rotbuf_valid_bytes >= u32:2) {
+        let (rbr,  _) = buff::rotbuf_pop(state.rotbuffer, u32:1);
+        let (rbr, eb) = buff::rotbuf_pop(state.rotbuffer, u32:1);
+        let copy_len = upper_tag[0:3] + u32:4;
+        let offset = (upper_tag[3:6] << 8) + (eb as u32);
+        let newstate = SnappyCommandExpanderState {
+          fsm: CopyExpanderFSM::DECODE_TAG,
+          rotbuffer: rbr.rotbuffer
+        };
+        let cmdordata = SnpyCmdOrData {
+          is_cmd: true,
+          cmd: SnpyCmd {
+            is_copy: true,
+            copy_info: CopyInfo {
+              offset: offset,
+              copy_len: copy_len
+            },
+            lit_info: zero!<LitInfo>()
+          },
+          data: zero!<DataBundle>()
+        };
+        (true, cmdordata, newstate)
+      } else {
+        (false, zero!<SnpyCmdOrData>(), state)
+      }
+    } else if (opcode == SnappyOpcode::COPY_2BYTE_OFFSET) {
+      if (rotbuf_valid_bytes >= u32:3) {
+        let (rbr,  _) = buff::rotbuf_pop(state.rotbuffer, u32:1);
+        let (rbr, eb) = buff::rotbuf_pop(state.rotbuffer, u32:2);
+        let copy_len = upper_tag[0:3] + u32:4;
+        let offset = (upper_tag[3:6] << 8) + (eb as u32);
+        let newstate = SnappyCommandExpanderState {
+          fsm: CopyExpanderFSM::DECODE_TAG,
+          rotbuffer: rbr.rotbuffer
+        };
+        let cmdordata = SnpyCmdOrData {
+          is_cmd: true,
+          cmd: SnpyCmd {
+            is_copy: true,
+            copy_info: CopyInfo {
+              offset: offset,
+              copy_len: copy_len
+            },
+            lit_info: zero!<LitInfo>()
+          },
+          data: zero!<DataBundle>()
+        };
+        (true, cmdordata, newstate)
+      } else {
+        (false, zero!<SnpyCmdOrData>(), state)
+      }
+    } else if (opcode == SnappyOpcode::COPY_4BYTE_OFFSET) {
+    } else {
+      (false, zero!<SnpyCmdOrData>(), state)
+    }
+  }
+}
+
+//pub fn decode_tag(state: SnappyCommandExpanderState) -> SnappyCommandExpanderState {
+//  let (br, snappy_tag) = buff::buffer_pop(state.databundle.buffer, BYTE);
+//  if br.status == buff::BufferStatus::OK {
+//    let snpy_op = snappy_tag[0:2];
+//    let upper_tag = snappy_tag[2:8] as u32;
+//
+//    // literal command
+//    if (snpy_op == u2:0) {
+//      if (upper_tag < u32:60) {
+//        // short literals : start shipping literals
+//        SnappyCommandExpanderState {
+//          fsm: CopyExpanderFSM::SHIP_LITERALS,
+//          tag_extra_bytes: u32:0,
+//          databundle: DataBundle {
+//            buffer: br.buffer,
+//            is_last: state.databundle.is_last
+//          }
+//        }
+//      } else {
+//        // long literals : need to decode extra tags
+//        let tag_extra_bytes = upper_tag - u32:60 + u32:1;
+//        SnappyCommandExpanderState {
+//          fsm: CopyExpanderFSM::DECODE_LITERALS_EXTRA_BYTES,
+//          tag_extra_bytes: tag_extra_bytes,
+//          databundle: DataBundle {
+//            buffer: br.buffer,
+//            is_last: state.databundle.is_last
+//          }
+//        }
+//      }
+//    } else if (snpy_op == u2:1) { // copy with 1-byte offset
+//      let = copy_len
+//    } else if (snpy_op == u2:2) { // copy with 2-byte offset
+//    } else { // copy with 4-byte offset
+//    }
+//  } else {
+//    state
+//  }
+//}
+
+proc SnappyCommandExpander {
+  incoming_data_bundle: chan<DataBundle> in;
+  snappy_cmd_or_data_out: chan<SnpyCmdOrData> out;
+
+  init {
+    (zero!<SnappyCommandExpanderState>())
+  }
+
+  config(incoming_data_bundle: chan<DataBundle> in,
+         snappy_cmd_or_data_out: chan<SnpyCmdOrData> out) {
+    (incoming_data_bundle, snappy_cmd_or_data_out)
+  }
+
+  next(tok: token, state: SnappyCommandExpanderState) {
+    let recv_ready = buff::rotbuf_can_fit(state.rotbuffer, BUS_BYTES);
+    let (tok, databundle, recv_valid) = recv_if_non_blocking(tok, incoming_data_bundle, recv_ready, zero!<DataBundle>());
+    let state = if (recv_valid && recv_ready) {
+      let buffer_result = buff::rotbuf_append(state.rotbuffer, databundle);
+      trace_fmt!("[SnpyCommandExpander] recv data {:x} bytes {} last {}",
+        databundle.data, databundle.valid_bytes, databundle.is_last);
+      trace_fmt!("[SnpyCommandExpander] rotbuffer {:x} {}",
+        buffer_result.rotbuffer.content,
+        buff::rotbuf_valid_bytes(buffer_result.rotbuffer));
+      SnappyCommandExpanderState {
+        rotbuffer: buffer_result.rotbuffer,
+        ..state
+      }
+    } else {
+      state
+    };
+
+    let (do_send, cmdordata_to_send, state) = match state.fsm {
+      CopyExpanderFSM::DECODE_TAG =>
+        decode_tag(state)
+      CopyExpanderFSM::SHIP_LITERALS =>
+        ship_literals(state),
+      _ => (false, zero!<SnpyCmdOrData>(), state)
+    };
+
+    state
+  }
+}
