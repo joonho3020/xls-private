@@ -85,7 +85,7 @@ proc SnappyCommandExpander {
     let recv_ready = buff::buffer_can_fit(state.buffer, BusBytesBundle:0);
     let (tok, databundle, recv_valid) = recv_if_non_blocking(tok, incoming_data_bundle, recv_ready, zero!<DataBundle>());
     let state = if (recv_valid && recv_ready) {
-      trace_fmt!("[SnpyCommandExpander] recv data {:x}", databundle);
+      trace_fmt!("[SnpyCommandExpander] recv data {:x} bytes {} last {}", databundle.data, databundle.valid_bytes, databundle.is_last);
       // let valid_bits = databundle.valid_bytes << 3;
       // let buff_data = databundle.data as bits[valid_bits];
       let buffer_result = buff::buffer_append(state.buffer, databundle.data);
