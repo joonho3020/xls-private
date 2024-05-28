@@ -41,10 +41,12 @@ xls_dslx_library(
     srcs = [
         "snappy.x",
         "command_expander.x",
-        "copy_splitter.x"
+        "copy_splitter.x",
+        "command_executer.x",
     ],
     deps = [
-        ":snappy_common_dslx"
+        ":snappy_common_dslx",
+        "//xls/examples:ram_dslx",
     ]
 )
 

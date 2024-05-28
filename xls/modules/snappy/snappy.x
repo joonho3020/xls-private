@@ -5,6 +5,7 @@ import xls.modules.snappy.common;
 import xls.modules.snappy.varint as varint;
 import xls.modules.snappy.command_expander as command_expander;
 import xls.modules.snappy.copy_splitter as copy_splitter;
+import xls.modules.snappy.command_executer as command_executer;
 
 const BYTE     = common::BYTE;
 const BUS_BITS = common::BUS_BITS;
@@ -93,7 +94,7 @@ pub proc SnappyDecompressor {
   decomp_info_r: chan<SnappyDecompInfo> in;
   comp_data_r: chan<BusBytesBundle> in;
   databundle_s: chan<DataBundle> out;
-  cmdordatabundle_r: chan<SnpyCmdOrData> in;
+  databundle_r: chan<DataBundle> in;
   done_s: chan<bool> out;
 
   init {
@@ -107,10 +108,12 @@ pub proc SnappyDecompressor {
   ) {
     let (databundle_s, databundle_r) = chan<DataBundle>("cmd_expander_in");
     let (cmdordatabundle_s, cmdordatabundle_r) = chan<SnpyCmdOrData>("cmd_expander_out");
-    let (cmdordatabundle_s1, cmdordatabundle_r1) = chan<SnpyCmdOrData>("cmd_expander_out");
+    let (cmdordatabundle_s1, cmdordatabundle_r1) = chan<SnpyCmdOrData>("copy_splitter_out");
+    let (databundle_s1, databundle_r1) = chan<DataBundle>("cmd_executer_out");
     spawn command_expander::SnappyCommandExpander(databundle_r, cmdordatabundle_s);
     spawn copy_splitter::SnappyCopySplitter(cmdordatabundle_r, cmdordatabundle_s1);
-    (decomp_info_r, comp_data_r, databundle_s, cmdordatabundle_r1, done_s)
+    spawn command_executer::SnappyCommandExecuter(cmdordatabundle_r1, databundle_s1);
+    (decomp_info_r, comp_data_r, databundle_s, databundle_r1, done_s)
   }
 
   next (tok: token, state: SnappyState) {
@@ -159,6 +162,11 @@ pub proc SnappyDecompressor {
     } else {
       tok
     };
+
+    let (tok, decomp_data, val) = recv_non_blocking(tok, databundle_r, zero!<DataBundle>());
+    if (val) {
+      trace_fmt!("[SnpyDecomp] decompressed data {:x}", decomp_data);
+    } else {};
 
     // let tok = if (do_send) {
     //   send(tok, done_s, true)
