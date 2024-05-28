@@ -98,6 +98,7 @@ proc SnappyCopySplitter {
   next(tok: token, state: SnappyCopySplitterState) {
     let recv_ready = (state.fsm != CopySplitterFSM::SPLIT_COPY_COMMANDS);
     let (tok, cmdordata, recv_valid) = recv_if_non_blocking(tok, cmdordata_in, recv_ready, zero!<SnpyCmdOrData>());
+    trace_fmt!("[SnpyCopySPlitter] recv 0x{:x}", cmdordata);
     let state = if (recv_valid && recv_ready) {
       let fsm = if (cmdordata.is_cmd && cmdordata.cmd.is_copy) {
         CopySplitterFSM::SPLIT_COPY_COMMANDS

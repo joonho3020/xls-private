@@ -56,17 +56,17 @@ struct SnappyCommandExecuterState {
 pub fn set_command(state: SnappyCommandExecuterState) ->
     (bool, bool, SnappyCommandExecuterState) {
   assert_eq(state.cmdordata.is_cmd, true);
-  let next_fsm = if (state.cmdordata.cmd.is_copy) {
-    CommandExecuterFSM::PERFORM_COPY
+  let (history_lookup, next_fsm) = if (state.cmdordata.cmd.is_copy) {
+    (true, CommandExecuterFSM::PERFORM_COPY)
   } else {
-    CommandExecuterFSM::SHIP_LITERALS
+    (false, CommandExecuterFSM::SHIP_LITERALS)
   };
   let next_state = SnappyCommandExecuterState {
     fsm: next_fsm,
     cur_cmd: state.cmdordata.cmd,
     ..state
   };
-  (false, false, next_state)
+  (false, history_lookup, next_state)
 }
 
 pub fn ship_literals(state: SnappyCommandExecuterState) ->
@@ -185,22 +185,24 @@ proc SnappyCommandExecuter {
         let sram_write_data = (data.data >> (u32:8 * idx)) & byte_mask as uBusBits;
 
         let tok = if (idx < valid_bytes) {
-          trace_fmt!("[SnpyCommandExecuter] SRAM WR hb_offset {} bank {} addr {} data 0x{:x}",
+          trace_fmt!("[SnpyCommandExecuter] SRAM WR LIT hb_offset {} bank {} addr {} data 0x{:x}",
                      historybuffer_offset, sram_bank_idx, sram_bank_addr, sram_write_data);
-          send(tok,
+          let tok = send(tok,
               sram_wr_req_s[sram_bank_idx],
               ram::WriteWordReq<SRAM_NUM_PARTITIONS, SRAM_ADDR_BITS, SRAM_WORD_BITS>(
                 sram_bank_addr as uN[SRAM_ADDR_BITS], sram_write_data as uN[SRAM_WORD_BITS])
-          )
+          );
+          let (tok, _) = recv(tok, sram_wr_resp_r[sram_bank_idx]);
+          tok
         } else {
           tok
         };
-        let (tok, _) = recv(tok, sram_wr_resp_r[sram_bank_idx]);
-        tok
+        join(tok, tok)
       } (tok);
 
       // perform writes to output
       let tok = send(tok, decompressed_output, data);
+      trace_fmt!("[SnpyCommandExecuter] send lit decomp data {:x}", data);
 
       // update state
       let cur_lit_done = (state.cur_litlen_shipped + valid_bytes) >= state.cur_cmd.lit_info.litlen;
@@ -252,7 +254,7 @@ proc SnappyCommandExecuter {
         let valid_bytes_to_add = if (valid_copy) { u32:1 } else { u32:0 };
         let new_databundle = DataBundle {
           valid_bytes: databundle.valid_bytes + valid_bytes_to_add,
-          data: ((read_data.data << (BYTE * idx)) as uBusBits) | databundle.data,
+          data: ((read_data.data as uBusBits << (BYTE * idx)) as uBusBits) | databundle.data,
           is_last: false
         };
         let state = SnappyCommandExecuterState {
@@ -265,10 +267,40 @@ proc SnappyCommandExecuter {
       trace_fmt!("[SnpyCommandExecuter] cur_copy_databundle {:x}",
         state.cur_copy_databundle);
 
+      let data = state.cur_copy_databundle;
+      let valid_bytes = data.valid_bytes;
+      let sram_bank_start_idx = state.historybuffer_ptr % BUS_BYTES;
+
+      // TODO : Is this the correct way to perform parallel SRAM lookups?
+      // perform writes to SRAM
+      let tok = for (idx, tok): (u32, token) in range(u32:0, BUS_BYTES) {
+        let sram_bank_idx  = (sram_bank_start_idx + idx) % BUS_BYTES;
+        let historybuffer_offset = (state.historybuffer_ptr + idx) % SNAPPY_MAX_HISTORY_BYTES;
+        let sram_bank_addr = historybuffer_offset >> std::clog2(BUS_BYTES);
+        let byte_mask = (u32:1 << 8) - u32:1;
+        let sram_write_data = (data.data >> (u32:8 * idx)) & byte_mask as uBusBits;
+
+        let tok = if (idx < valid_bytes) {
+          trace_fmt!("[SnpyCommandExecuter] SRAM WR COPY hb_offset {} bank {} addr {} data 0x{:x}",
+                     historybuffer_offset, sram_bank_idx, sram_bank_addr, sram_write_data);
+          let tok = send(tok,
+              sram_wr_req_s[sram_bank_idx],
+              ram::WriteWordReq<SRAM_NUM_PARTITIONS, SRAM_ADDR_BITS, SRAM_WORD_BITS>(
+                sram_bank_addr as uN[SRAM_ADDR_BITS], sram_write_data as uN[SRAM_WORD_BITS])
+          );
+          let (tok, _) = recv(tok, sram_wr_resp_r[sram_bank_idx]);
+          tok
+        } else {
+          tok
+        };
+        join(tok, tok)
+      } (tok);
+
       // perform writes to output
       let tok = send(tok, decompressed_output, state.cur_copy_databundle);
       let new_state = SnappyCommandExecuterState {
         fsm: CommandExecuterFSM::SET_COMMAND,
+        historybuffer_ptr: state.historybuffer_ptr + valid_bytes,
         cur_copy_databundle: zero!<DataBundle>(),
         ..state
       };
