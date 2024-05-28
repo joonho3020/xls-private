@@ -18,14 +18,13 @@ type LitInfo = common::LitInfo;
 type SnpyCmd = common::SnpyCmd;
 type SnpyCmdOrData = common::SnpyCmdOrData<BUS_BITS>;
 
-
-pub enum CopyExpanderFSM : u3 {
+pub enum CmdExpanderFSM : u3 {
   DECODE_TAG = 0,
   SHIP_LITERALS = 1
 }
 
 struct SnappyCommandExpanderState {
-  fsm: CopyExpanderFSM,
+  fsm: CmdExpanderFSM,
   rotbuffer: RotBuffer,
   cur_litlen: u32,
   sent_litlen: u32
@@ -79,7 +78,7 @@ pub fn decode_tag(state: SnappyCommandExpanderState) ->
         let litlen = upper_tag + u32:1;
 
         let newstate = SnappyCommandExpanderState {
-          fsm: CopyExpanderFSM::SHIP_LITERALS,
+          fsm: CmdExpanderFSM::SHIP_LITERALS,
           rotbuffer: rbr.rotbuffer,
           cur_litlen: litlen,
           sent_litlen: u32:0
@@ -95,7 +94,7 @@ pub fn decode_tag(state: SnappyCommandExpanderState) ->
           let litlen = (litlen as u32) + u32:1;
 
           let newstate = SnappyCommandExpanderState {
-            fsm: CopyExpanderFSM::SHIP_LITERALS,
+            fsm: CmdExpanderFSM::SHIP_LITERALS,
             rotbuffer: rbr.rotbuffer,
             cur_litlen: litlen,
             sent_litlen: u32:0
@@ -113,7 +112,7 @@ pub fn decode_tag(state: SnappyCommandExpanderState) ->
         let offset = (upper_tag[3:6] as u32 << 8) + (eb as u32);
 
         let newstate = SnappyCommandExpanderState {
-          fsm: CopyExpanderFSM::DECODE_TAG,
+          fsm: CmdExpanderFSM::DECODE_TAG,
           rotbuffer: rbr.rotbuffer,
           ..state
         };
@@ -129,7 +128,7 @@ pub fn decode_tag(state: SnappyCommandExpanderState) ->
         let offset = eb as u32;
 
         let newstate = SnappyCommandExpanderState {
-          fsm: CopyExpanderFSM::DECODE_TAG,
+          fsm: CmdExpanderFSM::DECODE_TAG,
           rotbuffer: rbr.rotbuffer,
           ..state
         };
@@ -145,7 +144,7 @@ pub fn decode_tag(state: SnappyCommandExpanderState) ->
         let offset = eb as u32;
 
         let newstate = SnappyCommandExpanderState {
-          fsm: CopyExpanderFSM::DECODE_TAG,
+          fsm: CmdExpanderFSM::DECODE_TAG,
           rotbuffer: rbr.rotbuffer,
           ..state
         };
@@ -172,9 +171,9 @@ pub fn ship_literals(state: SnappyCommandExpanderState) ->
     let sent_litlen = if is_last_chunk { u32:0 } else { state.sent_litlen + bytes_to_send_now };
     let cur_litlen = if is_last_chunk { u32:0 } else { state.cur_litlen };
     let fsm = if is_last_chunk || (remaining_bytes_to_send <= BUS_BYTES) {
-      CopyExpanderFSM::DECODE_TAG
+      CmdExpanderFSM::DECODE_TAG
     } else {
-      CopyExpanderFSM::SHIP_LITERALS
+      CmdExpanderFSM::SHIP_LITERALS
     };
     let newstate = SnappyCommandExpanderState {
       cur_litlen: cur_litlen,
@@ -229,9 +228,9 @@ proc SnappyCommandExpander {
     };
 
     let (do_send, cmdordata_to_send, state) = match state.fsm {
-      CopyExpanderFSM::DECODE_TAG =>
+      CmdExpanderFSM::DECODE_TAG =>
         decode_tag(state),
-      CopyExpanderFSM::SHIP_LITERALS =>
+      CmdExpanderFSM::SHIP_LITERALS =>
         ship_literals(state),
       _ => (false, zero!<SnpyCmdOrData>(), state)
     };

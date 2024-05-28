@@ -40,7 +40,8 @@ xls_dslx_library(
     name = "snappy_decomp_dslx",
     srcs = [
         "snappy.x",
-        "command_expander.x"
+        "command_expander.x",
+        "copy_splitter.x"
     ],
     deps = [
         ":snappy_common_dslx"

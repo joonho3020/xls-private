@@ -4,6 +4,7 @@ import xls.modules.snappy.buffer as buff;
 import xls.modules.snappy.common;
 import xls.modules.snappy.varint as varint;
 import xls.modules.snappy.command_expander as command_expander;
+import xls.modules.snappy.copy_splitter as copy_splitter;
 
 const BYTE     = common::BYTE;
 const BUS_BITS = common::BUS_BITS;
@@ -106,8 +107,10 @@ pub proc SnappyDecompressor {
   ) {
     let (databundle_s, databundle_r) = chan<DataBundle>("cmd_expander_in");
     let (cmdordatabundle_s, cmdordatabundle_r) = chan<SnpyCmdOrData>("cmd_expander_out");
+    let (cmdordatabundle_s1, cmdordatabundle_r1) = chan<SnpyCmdOrData>("cmd_expander_out");
     spawn command_expander::SnappyCommandExpander(databundle_r, cmdordatabundle_s);
-    (decomp_info_r, comp_data_r, databundle_s, cmdordatabundle_r, done_s)
+    spawn copy_splitter::SnappyCopySplitter(cmdordatabundle_r, cmdordatabundle_s1);
+    (decomp_info_r, comp_data_r, databundle_s, cmdordatabundle_r1, done_s)
   }
 
   next (tok: token, state: SnappyState) {

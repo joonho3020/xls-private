@@ -1,5 +1,8 @@
 
 
+pub const SNAPPY_MAX_HISTORY_BYTES = u32:32768;
+pub const SNAPPY_MIN_COPY_LEN = u32:4;
+
 pub const BUS_BYTES = u32:8;
 pub const BUS_BITS  = BUS_BYTES * u32:8;
 pub const BYTE = u32:8;
