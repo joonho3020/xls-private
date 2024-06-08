@@ -44,5 +44,6 @@ pub struct SnpyCmd {
 pub struct SnpyCmdOrData<CAPACITY: u32> {
   is_cmd: bool,
   cmd: SnpyCmd,
-  data: DataBundle<CAPACITY>
+  data: DataBundle<CAPACITY>,
+  is_last: bool
 }

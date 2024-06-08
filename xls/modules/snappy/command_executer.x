@@ -255,7 +255,7 @@ proc SnappyCommandExecuter {
         let new_databundle = DataBundle {
           valid_bytes: databundle.valid_bytes + valid_bytes_to_add,
           data: ((read_data.data as uBusBits << (BYTE * idx)) as uBusBits) | databundle.data,
-          is_last: false
+          is_last: state.cmdordata.is_last
         };
         let state = SnappyCommandExecuterState {
           cur_copy_databundle: new_databundle,

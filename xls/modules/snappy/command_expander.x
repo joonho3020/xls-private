@@ -30,7 +30,7 @@ struct SnappyCommandExpanderState {
   sent_litlen: u32
 }
 
-pub fn set_copy_cmd(offset: u32, copy_len: u32) -> SnpyCmdOrData {
+pub fn set_copy_cmd(offset: u32, copy_len: u32, is_last: bool) -> SnpyCmdOrData {
   let ret = SnpyCmdOrData {
     is_cmd: true,
     cmd: SnpyCmd {
@@ -41,7 +41,8 @@ pub fn set_copy_cmd(offset: u32, copy_len: u32) -> SnpyCmdOrData {
       },
       lit_info: zero!<LitInfo>()
     },
-    data: zero!<DataBundle>()
+    data: zero!<DataBundle>(),
+    is_last: is_last
   };
   trace_fmt!("[SnpyCommandExpander] set_copy_cmd: {}", ret);
   ret
@@ -55,7 +56,8 @@ pub fn set_lit_cmd(litlen: u32) -> SnpyCmdOrData {
       copy_info: zero!<CopyInfo>(),
       lit_info: LitInfo { litlen: litlen }
     },
-    data: zero!<DataBundle>()
+    data: zero!<DataBundle>(),
+    is_last: false
   };
   trace_fmt!("[SnpyCommandExpander] set_lit_cmd: {}", ret);
   ret
@@ -107,6 +109,7 @@ pub fn decode_tag(state: SnappyCommandExpanderState) ->
     } else if (opcode == common::SnappyOpcode::COPY_1BYTE_OFFSET) {
       if (rotbuf_valid_bytes >= u32:2) {
         let (rbr,  _) = buff::rotbuf_pop(state.rotbuffer, u32:1);
+        let is_last_chunk = buff::rotbuf_is_last_chunk(rbr.rotbuffer, u32:8);
         let (rbr, eb) = buff::rotbuf_pop(rbr.rotbuffer, u32:1);
         let copy_len = upper_tag[0:3] as u32 + u32:4;
         let offset = (upper_tag[3:6] as u32 << 8) + (eb as u32);
@@ -116,13 +119,14 @@ pub fn decode_tag(state: SnappyCommandExpanderState) ->
           rotbuffer: rbr.rotbuffer,
           ..state
         };
-        (true, set_copy_cmd(offset, copy_len), newstate)
+        (true, set_copy_cmd(offset, copy_len, is_last_chunk), newstate)
       } else {
         (false, zero!<SnpyCmdOrData>(), state)
       }
     } else if (opcode == common::SnappyOpcode::COPY_2BYTE_OFFSET) {
       if (rotbuf_valid_bytes >= u32:3) {
         let (rbr,  _) = buff::rotbuf_pop(state.rotbuffer, u32:1);
+        let is_last_chunk = buff::rotbuf_is_last_chunk(rbr.rotbuffer, u32:16);
         let (rbr, eb) = buff::rotbuf_pop(rbr.rotbuffer, u32:2);
         let copy_len = upper_tag[0:3] as u32 + u32:1;
         let offset = eb as u32;
@@ -132,13 +136,14 @@ pub fn decode_tag(state: SnappyCommandExpanderState) ->
           rotbuffer: rbr.rotbuffer,
           ..state
         };
-        (true, set_copy_cmd(offset, copy_len), newstate)
+        (true, set_copy_cmd(offset, copy_len, is_last_chunk), newstate)
       } else {
         (false, zero!<SnpyCmdOrData>(), state)
       }
     } else if (opcode == common::SnappyOpcode::COPY_4BYTE_OFFSET) {
       if (rotbuf_valid_bytes >= u32:5) {
         let (rbr,  _) = buff::rotbuf_pop(state.rotbuffer, u32:1);
+        let is_last_chunk = buff::rotbuf_is_last_chunk(rbr.rotbuffer, u32:32);
         let (rbr, eb) = buff::rotbuf_pop(rbr.rotbuffer, u32:4);
         let copy_len = upper_tag[0:3] as u32 + u32:1;
         let offset = eb as u32;
@@ -148,7 +153,7 @@ pub fn decode_tag(state: SnappyCommandExpanderState) ->
           rotbuffer: rbr.rotbuffer,
           ..state
         };
-        (true, set_copy_cmd(offset, copy_len), newstate)
+        (true, set_copy_cmd(offset, copy_len, is_last_chunk), newstate)
       } else {
         (false, zero!<SnpyCmdOrData>(), state)
       }
@@ -188,7 +193,8 @@ pub fn ship_literals(state: SnappyCommandExpanderState) ->
         data: data as bits[BUS_BITS],
         valid_bytes: bytes_to_send_now,
         is_last: is_last_chunk
-      }
+      },
+      is_last: is_last_chunk
     };
     trace_fmt!("[SnpyCommandExpander] ship_literals cmd {:x} state {:x}",
       cmdordata, newstate);

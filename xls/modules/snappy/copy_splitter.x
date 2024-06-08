@@ -63,7 +63,8 @@ pub fn split_copy_commands(state: SnappyCopySplitterState) ->
       },
       lit_info: zero!<LitInfo>()
     },
-    data: zero!<DataBundle>()
+    data: zero!<DataBundle>(),
+    is_last: state.cmdordata.is_last && last_copy_to_ship
   };
 
   let (nxt_fsm, nxt_sent_copy_len, nxt_cmdordata_valid) = if last_copy_to_ship {

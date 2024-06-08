@@ -168,11 +168,11 @@ pub proc SnappyDecompressor {
       trace_fmt!("[SnpyDecomp] decompressed data {:x}", decomp_data);
     } else {};
 
-    // let tok = if (do_send) {
-    //   send(tok, done_s, true)
-    // } else {
-    //   tok
-    // };
+    let tok = if (val && decomp_data.is_last) {
+      send(tok, done_s, true)
+    } else {
+      tok
+    };
 
     state
   }
