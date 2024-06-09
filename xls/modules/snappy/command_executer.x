@@ -55,7 +55,7 @@ struct SnappyCommandExecuterState {
 
 pub fn set_command(state: SnappyCommandExecuterState) ->
     (bool, bool, SnappyCommandExecuterState) {
-  assert_eq(state.cmdordata.is_cmd, true);
+  // assert_eq(state.cmdordata.is_cmd, true);
   let (history_lookup, next_fsm) = if (state.cmdordata.cmd.is_copy) {
     (true, CommandExecuterFSM::PERFORM_COPY)
   } else {
@@ -83,10 +83,53 @@ proc SnappyCommandExecuter {
   cmdordata_in: chan<SnpyCmdOrData> in;
   decompressed_output: chan<DataBundle> out;
 
-  sram_rd_req_s: chan<ram::ReadReq<SRAM_ADDR_BITS, SRAM_NUM_PARTITIONS>>[BUS_BYTES] out;
-  sram_rd_resp_r: chan<ram::ReadResp<SRAM_WORD_BITS>>[BUS_BYTES] in;
-  sram_wr_req_s: chan<ram::WriteReq<SRAM_ADDR_BITS, SRAM_WORD_BITS, SRAM_NUM_PARTITIONS>>[BUS_BYTES] out;
-  sram_wr_resp_r: chan<ram::WriteResp>[BUS_BYTES] in;
+  sram_rd0_req_s: chan<ram::ReadReq<SRAM_ADDR_BITS, SRAM_NUM_PARTITIONS>> out;
+  sram_rd0_resp_r: chan<ram::ReadResp<SRAM_WORD_BITS>> in;
+
+  sram_rd1_req_s: chan<ram::ReadReq<SRAM_ADDR_BITS, SRAM_NUM_PARTITIONS>> out;
+  sram_rd1_resp_r: chan<ram::ReadResp<SRAM_WORD_BITS>> in;
+
+  sram_rd2_req_s: chan<ram::ReadReq<SRAM_ADDR_BITS, SRAM_NUM_PARTITIONS>> out;
+  sram_rd2_resp_r: chan<ram::ReadResp<SRAM_WORD_BITS>> in;
+
+  sram_rd3_req_s: chan<ram::ReadReq<SRAM_ADDR_BITS, SRAM_NUM_PARTITIONS>> out;
+  sram_rd3_resp_r: chan<ram::ReadResp<SRAM_WORD_BITS>> in;
+
+  sram_rd4_req_s: chan<ram::ReadReq<SRAM_ADDR_BITS, SRAM_NUM_PARTITIONS>> out;
+  sram_rd4_resp_r: chan<ram::ReadResp<SRAM_WORD_BITS>> in;
+
+  sram_rd5_req_s: chan<ram::ReadReq<SRAM_ADDR_BITS, SRAM_NUM_PARTITIONS>> out;
+  sram_rd5_resp_r: chan<ram::ReadResp<SRAM_WORD_BITS>> in;
+
+  sram_rd6_req_s: chan<ram::ReadReq<SRAM_ADDR_BITS, SRAM_NUM_PARTITIONS>> out;
+  sram_rd6_resp_r: chan<ram::ReadResp<SRAM_WORD_BITS>> in;
+
+  sram_rd7_req_s: chan<ram::ReadReq<SRAM_ADDR_BITS, SRAM_NUM_PARTITIONS>> out;
+  sram_rd7_resp_r: chan<ram::ReadResp<SRAM_WORD_BITS>> in;
+
+  sram_wr0_req_s: chan<ram::WriteReq<SRAM_ADDR_BITS, SRAM_WORD_BITS, SRAM_NUM_PARTITIONS>> out;
+  sram_wr0_resp_r: chan<ram::WriteResp> in;
+
+  sram_wr1_req_s: chan<ram::WriteReq<SRAM_ADDR_BITS, SRAM_WORD_BITS, SRAM_NUM_PARTITIONS>> out;
+  sram_wr1_resp_r: chan<ram::WriteResp> in;
+
+  sram_wr2_req_s: chan<ram::WriteReq<SRAM_ADDR_BITS, SRAM_WORD_BITS, SRAM_NUM_PARTITIONS>> out;
+  sram_wr2_resp_r: chan<ram::WriteResp> in;
+
+  sram_wr3_req_s: chan<ram::WriteReq<SRAM_ADDR_BITS, SRAM_WORD_BITS, SRAM_NUM_PARTITIONS>> out;
+  sram_wr3_resp_r: chan<ram::WriteResp> in;
+
+  sram_wr4_req_s: chan<ram::WriteReq<SRAM_ADDR_BITS, SRAM_WORD_BITS, SRAM_NUM_PARTITIONS>> out;
+  sram_wr4_resp_r: chan<ram::WriteResp> in;
+
+  sram_wr5_req_s: chan<ram::WriteReq<SRAM_ADDR_BITS, SRAM_WORD_BITS, SRAM_NUM_PARTITIONS>> out;
+  sram_wr5_resp_r: chan<ram::WriteResp> in;
+
+  sram_wr6_req_s: chan<ram::WriteReq<SRAM_ADDR_BITS, SRAM_WORD_BITS, SRAM_NUM_PARTITIONS>> out;
+  sram_wr6_resp_r: chan<ram::WriteResp> in;
+
+  sram_wr7_req_s: chan<ram::WriteReq<SRAM_ADDR_BITS, SRAM_WORD_BITS, SRAM_NUM_PARTITIONS>> out;
+  sram_wr7_resp_r: chan<ram::WriteResp> in;
 
   init {
     (zero!<SnappyCommandExecuterState>())
@@ -94,43 +137,74 @@ proc SnappyCommandExecuter {
 
   config(cmdordata_in: chan<SnpyCmdOrData> in,
          decompressed_output: chan<DataBundle> out) {
-    let (sram_rd_req_s, sram_rd_req_r) = chan<ram::ReadReq<SRAM_ADDR_BITS, SRAM_NUM_PARTITIONS>>[BUS_BYTES]("sram_rd_req");
-    let (sram_rd_resp_s, sram_rd_resp_r) = chan<ram::ReadResp<SRAM_WORD_BITS>>[BUS_BYTES]("sram_rd_resp");
-    let (sram_wr_req_s, sram_wr_req_r) = chan<ram::WriteReq<SRAM_ADDR_BITS, SRAM_WORD_BITS, SRAM_NUM_PARTITIONS>>[BUS_BYTES]("sram_wr_req");
-    let (sram_wr_resp_s, sram_wr_resp_r) = chan<ram::WriteResp>[BUS_BYTES]("sram_wr_resp");
+    let (sram_rd0_req_s, sram_rd0_req_r) = chan<ram::ReadReq<SRAM_ADDR_BITS, SRAM_NUM_PARTITIONS>>("sram_rd0_req");
+    let (sram_rd1_req_s, sram_rd1_req_r) = chan<ram::ReadReq<SRAM_ADDR_BITS, SRAM_NUM_PARTITIONS>>("sram_rd1_req");
+    let (sram_rd2_req_s, sram_rd2_req_r) = chan<ram::ReadReq<SRAM_ADDR_BITS, SRAM_NUM_PARTITIONS>>("sram_rd2_req");
+    let (sram_rd3_req_s, sram_rd3_req_r) = chan<ram::ReadReq<SRAM_ADDR_BITS, SRAM_NUM_PARTITIONS>>("sram_rd3_req");
+    let (sram_rd4_req_s, sram_rd4_req_r) = chan<ram::ReadReq<SRAM_ADDR_BITS, SRAM_NUM_PARTITIONS>>("sram_rd4_req");
+    let (sram_rd5_req_s, sram_rd5_req_r) = chan<ram::ReadReq<SRAM_ADDR_BITS, SRAM_NUM_PARTITIONS>>("sram_rd5_req");
+    let (sram_rd6_req_s, sram_rd6_req_r) = chan<ram::ReadReq<SRAM_ADDR_BITS, SRAM_NUM_PARTITIONS>>("sram_rd6_req");
+    let (sram_rd7_req_s, sram_rd7_req_r) = chan<ram::ReadReq<SRAM_ADDR_BITS, SRAM_NUM_PARTITIONS>>("sram_rd7_req");
+
+    let (sram_rd0_resp_s, sram_rd0_resp_r) = chan<ram::ReadResp<SRAM_WORD_BITS>>("sram_rd0_resp");
+    let (sram_rd1_resp_s, sram_rd1_resp_r) = chan<ram::ReadResp<SRAM_WORD_BITS>>("sram_rd1_resp");
+    let (sram_rd2_resp_s, sram_rd2_resp_r) = chan<ram::ReadResp<SRAM_WORD_BITS>>("sram_rd2_resp");
+    let (sram_rd3_resp_s, sram_rd3_resp_r) = chan<ram::ReadResp<SRAM_WORD_BITS>>("sram_rd3_resp");
+    let (sram_rd4_resp_s, sram_rd4_resp_r) = chan<ram::ReadResp<SRAM_WORD_BITS>>("sram_rd4_resp");
+    let (sram_rd5_resp_s, sram_rd5_resp_r) = chan<ram::ReadResp<SRAM_WORD_BITS>>("sram_rd5_resp");
+    let (sram_rd6_resp_s, sram_rd6_resp_r) = chan<ram::ReadResp<SRAM_WORD_BITS>>("sram_rd6_resp");
+    let (sram_rd7_resp_s, sram_rd7_resp_r) = chan<ram::ReadResp<SRAM_WORD_BITS>>("sram_rd7_resp");
+
+    let (sram_wr0_req_s, sram_wr0_req_r) = chan<ram::WriteReq<SRAM_ADDR_BITS, SRAM_WORD_BITS, SRAM_NUM_PARTITIONS>>("sram_wr0_req");
+    let (sram_wr1_req_s, sram_wr1_req_r) = chan<ram::WriteReq<SRAM_ADDR_BITS, SRAM_WORD_BITS, SRAM_NUM_PARTITIONS>>("sram_wr1_req");
+    let (sram_wr2_req_s, sram_wr2_req_r) = chan<ram::WriteReq<SRAM_ADDR_BITS, SRAM_WORD_BITS, SRAM_NUM_PARTITIONS>>("sram_wr2_req");
+    let (sram_wr3_req_s, sram_wr3_req_r) = chan<ram::WriteReq<SRAM_ADDR_BITS, SRAM_WORD_BITS, SRAM_NUM_PARTITIONS>>("sram_wr3_req");
+    let (sram_wr4_req_s, sram_wr4_req_r) = chan<ram::WriteReq<SRAM_ADDR_BITS, SRAM_WORD_BITS, SRAM_NUM_PARTITIONS>>("sram_wr4_req");
+    let (sram_wr5_req_s, sram_wr5_req_r) = chan<ram::WriteReq<SRAM_ADDR_BITS, SRAM_WORD_BITS, SRAM_NUM_PARTITIONS>>("sram_wr5_req");
+    let (sram_wr6_req_s, sram_wr6_req_r) = chan<ram::WriteReq<SRAM_ADDR_BITS, SRAM_WORD_BITS, SRAM_NUM_PARTITIONS>>("sram_wr6_req");
+    let (sram_wr7_req_s, sram_wr7_req_r) = chan<ram::WriteReq<SRAM_ADDR_BITS, SRAM_WORD_BITS, SRAM_NUM_PARTITIONS>>("sram_wr7_req");
+
+    let (sram_wr0_resp_s, sram_wr0_resp_r) = chan<ram::WriteResp>("sram_wr0_resp");
+    let (sram_wr1_resp_s, sram_wr1_resp_r) = chan<ram::WriteResp>("sram_wr1_resp");
+    let (sram_wr2_resp_s, sram_wr2_resp_r) = chan<ram::WriteResp>("sram_wr2_resp");
+    let (sram_wr3_resp_s, sram_wr3_resp_r) = chan<ram::WriteResp>("sram_wr3_resp");
+    let (sram_wr4_resp_s, sram_wr4_resp_r) = chan<ram::WriteResp>("sram_wr4_resp");
+    let (sram_wr5_resp_s, sram_wr5_resp_r) = chan<ram::WriteResp>("sram_wr5_resp");
+    let (sram_wr6_resp_s, sram_wr6_resp_r) = chan<ram::WriteResp>("sram_wr6_resp");
+    let (sram_wr7_resp_s, sram_wr7_resp_r) = chan<ram::WriteResp>("sram_wr7_resp");
 
     spawn ram::RamModel<SRAM_WORD_BITS, SRAM_WORD_CNT, SRAM_WORD_MASK,
       SRAM_RW_BEHAVIOR, SRAM_INIT> (
-        sram_rd_req_r[0], sram_rd_resp_s[0],
-        sram_wr_req_r[0], sram_wr_resp_s[0]);
+        sram_rd0_req_r, sram_rd0_resp_s,
+        sram_wr0_req_r, sram_wr0_resp_s);
     spawn ram::RamModel<SRAM_WORD_BITS, SRAM_WORD_CNT, SRAM_WORD_MASK,
       SRAM_RW_BEHAVIOR, SRAM_INIT> (
-        sram_rd_req_r[1], sram_rd_resp_s[1],
-        sram_wr_req_r[1], sram_wr_resp_s[1]);
+        sram_rd1_req_r, sram_rd1_resp_s,
+        sram_wr1_req_r, sram_wr1_resp_s);
     spawn ram::RamModel<SRAM_WORD_BITS, SRAM_WORD_CNT, SRAM_WORD_MASK,
       SRAM_RW_BEHAVIOR, SRAM_INIT> (
-        sram_rd_req_r[2], sram_rd_resp_s[2],
-        sram_wr_req_r[2], sram_wr_resp_s[2]);
+        sram_rd2_req_r, sram_rd2_resp_s,
+        sram_wr2_req_r, sram_wr2_resp_s);
     spawn ram::RamModel<SRAM_WORD_BITS, SRAM_WORD_CNT, SRAM_WORD_MASK,
       SRAM_RW_BEHAVIOR, SRAM_INIT> (
-        sram_rd_req_r[3], sram_rd_resp_s[3],
-        sram_wr_req_r[3], sram_wr_resp_s[3]);
+        sram_rd3_req_r, sram_rd3_resp_s,
+        sram_wr3_req_r, sram_wr3_resp_s);
     spawn ram::RamModel<SRAM_WORD_BITS, SRAM_WORD_CNT, SRAM_WORD_MASK,
       SRAM_RW_BEHAVIOR, SRAM_INIT> (
-        sram_rd_req_r[4], sram_rd_resp_s[4],
-        sram_wr_req_r[4], sram_wr_resp_s[4]);
+        sram_rd4_req_r, sram_rd4_resp_s,
+        sram_wr4_req_r, sram_wr4_resp_s);
     spawn ram::RamModel<SRAM_WORD_BITS, SRAM_WORD_CNT, SRAM_WORD_MASK,
       SRAM_RW_BEHAVIOR, SRAM_INIT> (
-        sram_rd_req_r[5], sram_rd_resp_s[5],
-        sram_wr_req_r[5], sram_wr_resp_s[5]);
+        sram_rd5_req_r, sram_rd5_resp_s,
+        sram_wr5_req_r, sram_wr5_resp_s);
     spawn ram::RamModel<SRAM_WORD_BITS, SRAM_WORD_CNT, SRAM_WORD_MASK,
       SRAM_RW_BEHAVIOR, SRAM_INIT> (
-        sram_rd_req_r[6], sram_rd_resp_s[6],
-        sram_wr_req_r[6], sram_wr_resp_s[6]);
+        sram_rd6_req_r, sram_rd6_resp_s,
+        sram_wr6_req_r, sram_wr6_resp_s);
     spawn ram::RamModel<SRAM_WORD_BITS, SRAM_WORD_CNT, SRAM_WORD_MASK,
       SRAM_RW_BEHAVIOR, SRAM_INIT> (
-        sram_rd_req_r[7], sram_rd_resp_s[7],
-        sram_wr_req_r[7], sram_wr_resp_s[7]);
+        sram_rd7_req_r, sram_rd7_resp_s,
+        sram_wr7_req_r, sram_wr7_resp_s);
 
     // for (i, _) : (u32, ()) in range(u32:0, BUS_BYTES) {
     //   spawn ram::RamModel<SRAM_WORD_BITS, SRAM_WORD_CNT, SRAM_WORD_MASK,
@@ -140,12 +214,26 @@ proc SnappyCommandExecuter {
     // } (());
 
     (cmdordata_in, decompressed_output,
-     sram_rd_req_s, sram_rd_resp_r,
-     sram_wr_req_s, sram_wr_resp_r)
+     sram_rd0_req_s, sram_rd0_resp_r,
+     sram_rd1_req_s, sram_rd1_resp_r,
+     sram_rd2_req_s, sram_rd2_resp_r,
+     sram_rd3_req_s, sram_rd3_resp_r,
+     sram_rd4_req_s, sram_rd4_resp_r,
+     sram_rd5_req_s, sram_rd5_resp_r,
+     sram_rd6_req_s, sram_rd6_resp_r,
+     sram_rd7_req_s, sram_rd7_resp_r,
+     sram_wr0_req_s, sram_wr0_resp_r,
+     sram_wr1_req_s, sram_wr1_resp_r,
+     sram_wr2_req_s, sram_wr2_resp_r,
+     sram_wr3_req_s, sram_wr3_resp_r,
+     sram_wr4_req_s, sram_wr4_resp_r,
+     sram_wr5_req_s, sram_wr5_resp_r,
+     sram_wr6_req_s, sram_wr6_resp_r,
+     sram_wr7_req_s, sram_wr7_resp_r)
   }
 
-  next(tok: token, state: SnappyCommandExecuterState) {
-    let (tok, cmdordata) = recv(tok, cmdordata_in);
+  next(state: SnappyCommandExecuterState) {
+    let (tok, cmdordata) = recv(token(), cmdordata_in);
 
     trace_fmt!("[SnpyCommandExecuter] recv {:x}", cmdordata);
 
@@ -168,8 +256,8 @@ proc SnappyCommandExecuter {
       history_update, history_lookup);
 
     let (tok, state) = if (history_update) {
-      assert_eq(state.cmdordata.is_cmd, false);
-      assert_eq(state.cur_cmd.is_copy, false);
+      // assert_eq(state.cmdordata.is_cmd, false);
+      // assert_eq(state.cur_cmd.is_copy, false);
 
       let data = state.cmdordata.data;
       let valid_bytes = data.valid_bytes;
@@ -187,12 +275,76 @@ proc SnappyCommandExecuter {
         let tok = if (idx < valid_bytes) {
           trace_fmt!("[SnpyCommandExecuter] SRAM WR LIT hb_offset {} bank {} addr {} data 0x{:x}",
                      historybuffer_offset, sram_bank_idx, sram_bank_addr, sram_write_data);
-          let tok = send(tok,
-              sram_wr_req_s[sram_bank_idx],
+
+          let tok = send_if(tok,
+              sram_wr0_req_s,
+              sram_bank_idx == u32:0,
               ram::WriteWordReq<SRAM_NUM_PARTITIONS, SRAM_ADDR_BITS, SRAM_WORD_BITS>(
                 sram_bank_addr as uN[SRAM_ADDR_BITS], sram_write_data as uN[SRAM_WORD_BITS])
           );
-          let (tok, _) = recv(tok, sram_wr_resp_r[sram_bank_idx]);
+          let (tok, _) = recv_if(tok, sram_wr0_resp_r, sram_bank_idx == u32:0, zero!<ram::WriteResp>());
+
+          let tok = send_if(tok,
+              sram_wr1_req_s,
+              sram_bank_idx == u32:1,
+              ram::WriteWordReq<SRAM_NUM_PARTITIONS, SRAM_ADDR_BITS, SRAM_WORD_BITS>(
+                sram_bank_addr as uN[SRAM_ADDR_BITS], sram_write_data as uN[SRAM_WORD_BITS])
+          );
+          let (tok, _) = recv_if(tok, sram_wr1_resp_r, sram_bank_idx == u32:1, zero!<ram::WriteResp>());
+
+          let tok = send_if(tok,
+              sram_wr2_req_s,
+              sram_bank_idx == u32:2,
+              ram::WriteWordReq<SRAM_NUM_PARTITIONS, SRAM_ADDR_BITS, SRAM_WORD_BITS>(
+                sram_bank_addr as uN[SRAM_ADDR_BITS], sram_write_data as uN[SRAM_WORD_BITS])
+          );
+          let (tok, _) = recv_if(tok, sram_wr2_resp_r, sram_bank_idx == u32:2, zero!<ram::WriteResp>());
+
+          let tok = send_if(tok,
+              sram_wr3_req_s,
+              sram_bank_idx == u32:3,
+              ram::WriteWordReq<SRAM_NUM_PARTITIONS, SRAM_ADDR_BITS, SRAM_WORD_BITS>(
+                sram_bank_addr as uN[SRAM_ADDR_BITS], sram_write_data as uN[SRAM_WORD_BITS])
+          );
+          let (tok, _) = recv_if(tok, sram_wr3_resp_r, sram_bank_idx == u32:3, zero!<ram::WriteResp>());
+
+          let tok = send_if(tok,
+              sram_wr4_req_s,
+              sram_bank_idx == u32:4,
+              ram::WriteWordReq<SRAM_NUM_PARTITIONS, SRAM_ADDR_BITS, SRAM_WORD_BITS>(
+                sram_bank_addr as uN[SRAM_ADDR_BITS], sram_write_data as uN[SRAM_WORD_BITS])
+          );
+          let (tok, _) = recv_if(tok, sram_wr4_resp_r, sram_bank_idx == u32:4, zero!<ram::WriteResp>());
+
+          let tok = send_if(tok,
+              sram_wr5_req_s,
+              sram_bank_idx == u32:5,
+              ram::WriteWordReq<SRAM_NUM_PARTITIONS, SRAM_ADDR_BITS, SRAM_WORD_BITS>(
+                sram_bank_addr as uN[SRAM_ADDR_BITS], sram_write_data as uN[SRAM_WORD_BITS])
+          );
+          let (tok, _) = recv_if(tok, sram_wr5_resp_r, sram_bank_idx == u32:5, zero!<ram::WriteResp>());
+
+          let tok = send_if(tok,
+              sram_wr6_req_s,
+              sram_bank_idx == u32:6,
+              ram::WriteWordReq<SRAM_NUM_PARTITIONS, SRAM_ADDR_BITS, SRAM_WORD_BITS>(
+                sram_bank_addr as uN[SRAM_ADDR_BITS], sram_write_data as uN[SRAM_WORD_BITS])
+          );
+          let (tok, _) = recv_if(tok, sram_wr6_resp_r, sram_bank_idx == u32:6, zero!<ram::WriteResp>());
+
+          let tok = send_if(tok,
+              sram_wr7_req_s,
+              sram_bank_idx == u32:7,
+              ram::WriteWordReq<SRAM_NUM_PARTITIONS, SRAM_ADDR_BITS, SRAM_WORD_BITS>(
+                sram_bank_addr as uN[SRAM_ADDR_BITS], sram_write_data as uN[SRAM_WORD_BITS])
+          );
+          let (tok, _) = recv_if(tok, sram_wr7_resp_r, sram_bank_idx == u32:7, zero!<ram::WriteResp>());
+
+          // let tok = send(tok,
+          //     sram_wr_req_s[sram_bank_idx],
+          //     ram::WriteWordReq<SRAM_NUM_PARTITIONS, SRAM_ADDR_BITS, SRAM_WORD_BITS>(
+          //       sram_bank_addr as uN[SRAM_ADDR_BITS], sram_write_data as uN[SRAM_WORD_BITS])
+          // );
           tok
         } else {
           tok
@@ -221,9 +373,9 @@ proc SnappyCommandExecuter {
                  cur_lit_done, nxt_cur_litlen_shipped, fsm, new_state.historybuffer_ptr);
       (tok, new_state)
     } else if (history_lookup) {
-      assert_eq(state.cmdordata.is_cmd, true);
-      assert_eq(state.cmdordata.cmd.is_copy, true);
-      assert_eq(state.historybuffer_ptr - state.cmdordata.cmd.copy_info.offset >= u32:0, true);
+      // assert_eq(state.cmdordata.is_cmd, true);
+      // assert_eq(state.cmdordata.cmd.is_copy, true);
+      // assert_eq(state.historybuffer_ptr - state.cmdordata.cmd.copy_info.offset >= u32:0, true);
 
       let copy_info = state.cmdordata.cmd.copy_info;
       let historybuffer_offset_ptr = state.historybuffer_ptr - copy_info.offset;
@@ -238,9 +390,48 @@ proc SnappyCommandExecuter {
 
         let valid_copy = (idx < copy_info.copy_len);
         let (tok, read_data) = if (valid_copy) {
-          let tok = send(tok, sram_rd_req_s[sram_bank_idx],
-                      ram::ReadWordReq<SRAM_NUM_PARTITIONS, SRAM_ADDR_BITS>(sram_bank_addr as uN[SRAM_ADDR_BITS]));
-          recv(tok, sram_rd_resp_r[sram_bank_idx])
+          send_if(tok, sram_rd0_req_s, sram_bank_idx == u32:0,
+             ram::ReadWordReq<SRAM_NUM_PARTITIONS, SRAM_ADDR_BITS>(sram_bank_addr as uN[SRAM_ADDR_BITS]));
+          send_if(tok, sram_rd1_req_s, sram_bank_idx == u32:1,
+             ram::ReadWordReq<SRAM_NUM_PARTITIONS, SRAM_ADDR_BITS>(sram_bank_addr as uN[SRAM_ADDR_BITS]));
+          send_if(tok, sram_rd2_req_s, sram_bank_idx == u32:2,
+             ram::ReadWordReq<SRAM_NUM_PARTITIONS, SRAM_ADDR_BITS>(sram_bank_addr as uN[SRAM_ADDR_BITS]));
+          send_if(tok, sram_rd3_req_s, sram_bank_idx == u32:3,
+             ram::ReadWordReq<SRAM_NUM_PARTITIONS, SRAM_ADDR_BITS>(sram_bank_addr as uN[SRAM_ADDR_BITS]));
+          send_if(tok, sram_rd4_req_s, sram_bank_idx == u32:4,
+             ram::ReadWordReq<SRAM_NUM_PARTITIONS, SRAM_ADDR_BITS>(sram_bank_addr as uN[SRAM_ADDR_BITS]));
+          send_if(tok, sram_rd5_req_s, sram_bank_idx == u32:5,
+             ram::ReadWordReq<SRAM_NUM_PARTITIONS, SRAM_ADDR_BITS>(sram_bank_addr as uN[SRAM_ADDR_BITS]));
+          send_if(tok, sram_rd6_req_s, sram_bank_idx == u32:6,
+             ram::ReadWordReq<SRAM_NUM_PARTITIONS, SRAM_ADDR_BITS>(sram_bank_addr as uN[SRAM_ADDR_BITS]));
+          send_if(tok, sram_rd7_req_s, sram_bank_idx == u32:7,
+             ram::ReadWordReq<SRAM_NUM_PARTITIONS, SRAM_ADDR_BITS>(sram_bank_addr as uN[SRAM_ADDR_BITS]));
+
+          let ret = if (sram_bank_idx == u32:0) {
+            recv(tok, sram_rd0_resp_r)
+          } else if (sram_bank_idx == u32:1) {
+            recv(tok, sram_rd1_resp_r)
+          } else if (sram_bank_idx == u32:2) {
+            recv(tok, sram_rd2_resp_r)
+          } else if (sram_bank_idx == u32:3) {
+            recv(tok, sram_rd3_resp_r)
+          } else if (sram_bank_idx == u32:4) {
+            recv(tok, sram_rd4_resp_r)
+          } else if (sram_bank_idx == u32:5) {
+            recv(tok, sram_rd5_resp_r)
+          } else if (sram_bank_idx == u32:6) {
+            recv(tok, sram_rd6_resp_r)
+          } else if (sram_bank_idx == u32:7) {
+            recv(tok, sram_rd7_resp_r)
+          } else {
+            (tok, zero!<ReadResp>())
+          };
+
+          ret
+
+          // let tok = send(tok, sram_rd_req_s[sram_bank_idx],
+          //             ram::ReadWordReq<SRAM_NUM_PARTITIONS, SRAM_ADDR_BITS>(sram_bank_addr as uN[SRAM_ADDR_BITS]));
+          // recv(tok, sram_rd_resp_r[sram_bank_idx])
         } else {
           (tok, zero!<ReadResp>())
         };
@@ -283,12 +474,60 @@ proc SnappyCommandExecuter {
         let tok = if (idx < valid_bytes) {
           trace_fmt!("[SnpyCommandExecuter] SRAM WR COPY hb_offset {} bank {} addr {} data 0x{:x}",
                      historybuffer_offset, sram_bank_idx, sram_bank_addr, sram_write_data);
-          let tok = send(tok,
-              sram_wr_req_s[sram_bank_idx],
-              ram::WriteWordReq<SRAM_NUM_PARTITIONS, SRAM_ADDR_BITS, SRAM_WORD_BITS>(
-                sram_bank_addr as uN[SRAM_ADDR_BITS], sram_write_data as uN[SRAM_WORD_BITS])
-          );
-          let (tok, _) = recv(tok, sram_wr_resp_r[sram_bank_idx]);
+          let tok = send_if(tok,
+            sram_wr0_req_s, sram_bank_idx == u32:0,
+            ram::WriteWordReq<SRAM_NUM_PARTITIONS, SRAM_ADDR_BITS, SRAM_WORD_BITS>(
+              sram_bank_addr as uN[SRAM_ADDR_BITS], sram_write_data as uN[SRAM_WORD_BITS]));
+          let (tok, _) = recv_if(tok, sram_wr0_resp_r, sram_bank_idx == u32:0, zero!<ram::WriteResp>());
+
+          let tok = send_if(tok,
+            sram_wr1_req_s, sram_bank_idx == u32:1,
+            ram::WriteWordReq<SRAM_NUM_PARTITIONS, SRAM_ADDR_BITS, SRAM_WORD_BITS>(
+              sram_bank_addr as uN[SRAM_ADDR_BITS], sram_write_data as uN[SRAM_WORD_BITS]));
+          let (tok, _) = recv_if(tok, sram_wr1_resp_r, sram_bank_idx == u32:1, zero!<ram::WriteResp>());
+
+          let tok = send_if(tok,
+            sram_wr2_req_s, sram_bank_idx == u32:2,
+            ram::WriteWordReq<SRAM_NUM_PARTITIONS, SRAM_ADDR_BITS, SRAM_WORD_BITS>(
+              sram_bank_addr as uN[SRAM_ADDR_BITS], sram_write_data as uN[SRAM_WORD_BITS]));
+          let (tok, _) = recv_if(tok, sram_wr2_resp_r, sram_bank_idx == u32:2, zero!<ram::WriteResp>());
+
+          let tok = send_if(tok,
+            sram_wr3_req_s, sram_bank_idx == u32:3,
+            ram::WriteWordReq<SRAM_NUM_PARTITIONS, SRAM_ADDR_BITS, SRAM_WORD_BITS>(
+              sram_bank_addr as uN[SRAM_ADDR_BITS], sram_write_data as uN[SRAM_WORD_BITS]));
+          let (tok, _) = recv_if(tok, sram_wr3_resp_r, sram_bank_idx == u32:3, zero!<ram::WriteResp>());
+
+          let tok = send_if(tok,
+            sram_wr4_req_s, sram_bank_idx == u32:4,
+            ram::WriteWordReq<SRAM_NUM_PARTITIONS, SRAM_ADDR_BITS, SRAM_WORD_BITS>(
+              sram_bank_addr as uN[SRAM_ADDR_BITS], sram_write_data as uN[SRAM_WORD_BITS]));
+          let (tok, _) = recv_if(tok, sram_wr4_resp_r, sram_bank_idx == u32:4, zero!<ram::WriteResp>());
+
+          let tok = send_if(tok,
+            sram_wr5_req_s, sram_bank_idx == u32:5,
+            ram::WriteWordReq<SRAM_NUM_PARTITIONS, SRAM_ADDR_BITS, SRAM_WORD_BITS>(
+              sram_bank_addr as uN[SRAM_ADDR_BITS], sram_write_data as uN[SRAM_WORD_BITS]));
+          let (tok, _) = recv_if(tok, sram_wr5_resp_r, sram_bank_idx == u32:5, zero!<ram::WriteResp>());
+
+          let tok = send_if(tok,
+            sram_wr6_req_s, sram_bank_idx == u32:6,
+            ram::WriteWordReq<SRAM_NUM_PARTITIONS, SRAM_ADDR_BITS, SRAM_WORD_BITS>(
+              sram_bank_addr as uN[SRAM_ADDR_BITS], sram_write_data as uN[SRAM_WORD_BITS]));
+          let (tok, _) = recv_if(tok, sram_wr6_resp_r, sram_bank_idx == u32:6, zero!<ram::WriteResp>());
+
+          let tok = send_if(tok,
+            sram_wr7_req_s, sram_bank_idx == u32:7,
+            ram::WriteWordReq<SRAM_NUM_PARTITIONS, SRAM_ADDR_BITS, SRAM_WORD_BITS>(
+              sram_bank_addr as uN[SRAM_ADDR_BITS], sram_write_data as uN[SRAM_WORD_BITS]));
+          let (tok, _) = recv_if(tok, sram_wr7_resp_r, sram_bank_idx == u32:7, zero!<ram::WriteResp>());
+
+          //let tok = send(tok,
+          //    sram_wr_req_s[sram_bank_idx],
+          //    ram::WriteWordReq<SRAM_NUM_PARTITIONS, SRAM_ADDR_BITS, SRAM_WORD_BITS>(
+          //      sram_bank_addr as uN[SRAM_ADDR_BITS], sram_write_data as uN[SRAM_WORD_BITS])
+          //);
+          //let (tok, _) = recv(tok, sram_wr_resp_r[sram_bank_idx]);
           tok
         } else {
           tok

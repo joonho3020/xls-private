@@ -202,7 +202,7 @@ pub fn rotbuf_peek<CAPACITY: u32>(
   }
 }
 
-pub fn rotbuf_pop_unsafe<BUS_BITS: u32, CAPACITY: u32>(
+pub fn rotbuf_pop_unsafe<CAPACITY: u32>(
   rotbuffer: RotBuffer<CAPACITY>, bytes_to_pop: u32
 ) -> (RotBuffer<CAPACITY>, bits[CAPACITY]) {
   let bits_to_pop = bytes_to_pop << 3;
@@ -217,7 +217,7 @@ pub fn rotbuf_pop_unsafe<BUS_BITS: u32, CAPACITY: u32>(
   )
 }
 
-pub fn rotbuf_pop<BUS_BITS: u32, CAPACITY: u32>(
+pub fn rotbuf_pop<CAPACITY: u32>(
   rotbuffer: RotBuffer<CAPACITY>, bytes_to_pop: u32
 ) -> (RotBufferResult<CAPACITY>, bits[CAPACITY]) {
   if rotbuf_has_at_least(rotbuffer, bytes_to_pop) == false {

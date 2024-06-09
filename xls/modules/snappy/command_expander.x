@@ -215,9 +215,9 @@ proc SnappyCommandExpander {
     (incoming_data_bundle, snappy_cmd_or_data_out)
   }
 
-  next(tok: token, state: SnappyCommandExpanderState) {
+  next(state: SnappyCommandExpanderState) {
     let recv_ready = buff::rotbuf_can_fit(state.rotbuffer, BUS_BYTES);
-    let (tok, databundle, recv_valid) = recv_if_non_blocking(tok, incoming_data_bundle, recv_ready, zero!<DataBundle>());
+    let (tok, databundle, recv_valid) = recv_if_non_blocking(token(), incoming_data_bundle, recv_ready, zero!<DataBundle>());
     let state = if (recv_valid && recv_ready) {
       let buffer_result = buff::rotbuf_append(state.rotbuffer, databundle);
       trace_fmt!("[SnpyCommandExpander] recv data {:x} bytes {} last {}",

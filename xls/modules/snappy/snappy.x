@@ -116,12 +116,12 @@ pub proc SnappyDecompressor {
     (decomp_info_r, comp_data_r, databundle_s, databundle_r1, done_s)
   }
 
-  next (tok: token, state: SnappyState) {
+  next (state: SnappyState) {
     trace_fmt!("----------- SnappyDecompressor next -----------------");
 
     // Configure accelerator
     let configure = state.fsm == SnappyFSMStates::CONFIGURE_SNAPPY_ACCEL;
-    let (tok, info, recv_valid) = recv_if_non_blocking(tok, decomp_info_r, configure, zero!<SnappyDecompInfo>());
+    let (tok, info, recv_valid) = recv_if_non_blocking(token(), decomp_info_r, configure, zero!<SnappyDecompInfo>());
     let state = if (configure && recv_valid) {
       trace_fmt!("[SnpyDecomp] Configuring.. compressed_file_bytes {}", info.compressed_file_bytes);
       SnappyState {
@@ -203,10 +203,10 @@ proc SnappyDecompressorTest {
     (terminator, decomp_info_s, comp_data_s, done_r)
   }
 
-  next(tok: token, state: TestBenchState) {
+  next(state: TestBenchState) {
     let (tok, state) = if (!state.sent_snappy_header) {
       let tok = send(
-        tok,
+        token(),
         decomp_info_s,
         SnappyDecompInfo {
           compressed_file_bytes: u32:135
@@ -233,7 +233,7 @@ proc SnappyDecompressorTest {
         TestBenchState { sent_snappy_header: true }
       )
     } else {
-      (tok, state)
+      (token(), state)
     };
 
     let (tok, is_done, val) = recv_non_blocking(tok, done_r, false);

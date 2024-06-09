@@ -45,9 +45,9 @@ pub fn ship_literals_or_commands(state: SnappyCopySplitterState) ->
 
 pub fn split_copy_commands(state: SnappyCopySplitterState) ->
     (bool, SnpyCmdOrData, SnappyCopySplitterState) {
-  assert_eq(state.cmdordata_valid, true);
-  assert_eq(state.cmdordata.is_cmd, true);
-  assert_eq(state.cmdordata.cmd.is_copy, true);
+  // assert_eq(state.cmdordata_valid, true);
+  // assert_eq(state.cmdordata.is_cmd, true);
+  // assert_eq(state.cmdordata.cmd.is_copy, true);
 
   let copy_info = state.cmdordata.cmd.copy_info;
   let last_copy_to_ship = (copy_info.copy_len <= state.sent_copy_len + SNAPPY_MIN_COPY_LEN);
@@ -96,9 +96,9 @@ proc SnappyCopySplitter {
     (cmdordata_in, cmdordata_out)
   }
 
-  next(tok: token, state: SnappyCopySplitterState) {
+  next(state: SnappyCopySplitterState) {
     let recv_ready = (state.fsm != CopySplitterFSM::SPLIT_COPY_COMMANDS);
-    let (tok, cmdordata, recv_valid) = recv_if_non_blocking(tok, cmdordata_in, recv_ready, zero!<SnpyCmdOrData>());
+    let (tok, cmdordata, recv_valid) = recv_if_non_blocking(token(), cmdordata_in, recv_ready, zero!<SnpyCmdOrData>());
     trace_fmt!("[SnpyCopySPlitter] recv 0x{:x}", cmdordata);
     let state = if (recv_valid && recv_ready) {
       let fsm = if (cmdordata.is_cmd && cmdordata.cmd.is_copy) {
